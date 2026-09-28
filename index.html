@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Roulette</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f7f7f5;
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 40px;
+      text-transform: uppercase;
+      color: #111;
+    }
+
+    .roulettes-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 48px;
+      justify-content: center;
+      margin-bottom: 48px;
+      width: 100%;
+      max-width: 840px;
+    }
+
+    .roulette-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1 1 340px;
+      max-width: 380px;
+    }
+
+    .roulette-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 16px;
+    }
+
+    .wheel-wrapper {
+      position: relative;
+      width: 300px;
+      height: 300px;
+    }
+
+    .wheel-pointer {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 18px solid #111;
+      z-index: 10;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    button {
+      background-color: #111;
+      color: #f7f7f5;
+      border: 1px solid #111;
+      padding: 14px 40px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s, opacity 0.2s;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #333;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .results-display {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      border: 1px solid #e2e2df;
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .result-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .result-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #777;
+    }
+
+    .result-value {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #111;
+      min-height: 1.5em;
+    }
+
+    .divider {
+      height: 1px;
+      background-color: #eee;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Idea Generator</h1>
+
+  <div class="roulettes-container">
+    <div class="roulette-card">
+      <div class="roulette-title">Tech Dilemma</div>
+      <div class="wheel-wrapper">
+        <div class="wheel-pointer"></div>
+        <canvas id="canvas1" width="600" height="600"></canvas>
+      </div>
+    </div>
+
+    <div class="roulette-card">
+      <div class="roulette-title">Game Format</div>
+      <div class="wheel-wrapper">
+        <div class="wheel-pointer"></div>
+        <canvas id="canvas2" width="600" height="600"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="spinBtn">Spin Roulettes</button>
+
+    <div class="results-display">
+      <div class="result-item">
+        <span class="result-label">Tech Dilemma</span>
+        <span class="result-value" id="result1">—</span>
+      </div>
+      <div class="divider"></div>
+      <div class="result-item">
+        <span class="result-label">Game Format</span>
+        <span class="result-value" id="result2">—</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dilemmas = [
+      "Biometric / Facial Recognition",
+      "Algorithmic Echo Chambers",
+      "Deepfakes & Fake News",
+      "AI Companionship Risks",
+      "Data Harvesting & Privacy",
+      "Environmental Cost of Data Centers"
+    ];
+
+    const formats = [
+      "First-Person Exploration Game",
+      "Platformer",
+      "Branching Narrative",
+      "Resource-Management Simulator",
+      "Turn-Based Strategy Game",
+      "Digital Card Battler",
+      "Escape-Room Puzzle Game"
+    ];
+
+    const colors1 = ["#ffffff", "#e8e8e6", "#f0f0ee", "#dcdcd9", "#f5f5f3", "#cfcfcc"];
+    const colors2 = ["#ffffff", "#f0f0ee", "#e4e4e1", "#f7f7f5", "#dcdcd9", "#efefed", "#cfcfcc"];
+
+    class Roulette {
+      constructor(canvasId, items, colors) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext("2d");
+        this.items = items;
+        this.colors = colors;
+        this.currentAngle = 0;
+        this.sliceAngle = (2 * Math.PI) / this.items.length;
+        this.draw();
+      }
+
+      draw() {
+        const radius = this.canvas.width / 2;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        for (let i = 0; i < this.items.length; i++) {
+          const start = this.currentAngle + (i * this.sliceAngle);
+          const end = start + this.sliceAngle;
+
+          this.ctx.beginPath();
+          this.ctx.moveTo(radius, radius);
+          this.ctx.arc(radius, radius, radius - 2, start, end);
+          this.ctx.fillStyle = this.colors[i % this.colors.length];
+          this.ctx.fill();
+          this.ctx.lineWidth = 1;
+          this.ctx.strokeStyle = "#bbbbba";
+          this.ctx.stroke();
+
+          // Render item text
+          this.ctx.save();
+          this.ctx.translate(radius, radius);
+          this.ctx.rotate(start + this.sliceAngle / 2);
+          this.ctx.textAlign = "right";
+          this.ctx.fillStyle = "#222";
+          this.ctx.font = "500 18px -apple-system, sans-serif";
+
+          let text = this.items[i];
+          if (text.length > 25) {
+            text = text.substring(0, 23) + "…";
+          }
+          this.ctx.fillText(text, radius - 24, 6);
+          this.ctx.restore();
+        }
+
+        // Center hub
+        this.ctx.beginPath();
+        this.ctx.arc(radius, radius, 14, 0, 2 * Math.PI);
+        this.ctx.fillStyle = "#111";
+        this.ctx.fill();
+      }
+
+      spinTo(targetIndex, spins, duration, onComplete) {
+        const fullCircle = 2 * Math.PI;
+        // Pointer is stationary at top: -pi/2
+        // When slice i lands at pointer: (currentAngle + i * sliceAngle + sliceAngle / 2) % 2pi = -pi/2
+        const targetAngleNormalized = (-Math.PI / 2) - (targetIndex * this.sliceAngle + this.sliceAngle / 2);
+        
+        const currentMod = this.currentAngle % fullCircle;
+        let delta = (targetAngleNormalized - currentMod) % fullCircle;
+        if (delta < 0) {
+          delta += fullCircle;
+        }
+
+        const totalRotation = (spins * fullCircle) + delta;
+        const startAngle = this.currentAngle;
+        const endAngle = startAngle + totalRotation;
+        const startTime = performance.now();
+
+        const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
+        const animate = (now) => {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          this.currentAngle = startAngle + totalRotation * easeOut(progress);
+          this.draw();
+
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          } else {
+            this.currentAngle = endAngle;
+            this.draw();
+            if (onComplete) onComplete();
+          }
+        };
+
+        requestAnimationFrame(animate);
+      }
+    }
+
+    const roulette1 = new Roulette("canvas1", dilemmas, colors1);
+    const roulette2 = new Roulette("canvas2", formats, colors2);
+
+    const spinBtn = document.getElementById("spinBtn");
+    const result1El = document.getElementById("result1");
+    const result2El = document.getElementById("result2");
+
+    spinBtn.addEventListener("click", () => {
+      spinBtn.disabled = true;
+      result1El.textContent = "Spinning…";
+      result2El.textContent = "Spinning…";
+
+      // Uniform random selection
+      const winnerIndex1 = Math.floor(Math.random() * dilemmas.length);
+      const winnerIndex2 = Math.floor(Math.random() * formats.length);
+
+      const duration = 4000;
+      let completed = 0;
+
+      const handleComplete = () => {
+        completed++;
+        if (completed === 2) {
+          result1El.textContent = dilemmas[winnerIndex1];
+          result2El.textContent = formats[winnerIndex2];
+          spinBtn.disabled = false;
+        }
+      };
+
+      roulette1.spinTo(winnerIndex1, 5, duration, handleComplete);
+      roulette2.spinTo(winnerIndex2, 6, duration, handleComplete);
+    });
+  </script>
+</body>
+</html>
